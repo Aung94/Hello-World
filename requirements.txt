@@ -1,0 +1,9 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+yt-dlp>=2025.1.1
+faster-whisper>=1.1.0
+deep-translator>=1.11.4
+edge-tts>=7.0.0
+anthropic>=1.13.0
+pydantic>=2.7
+# Optional: VoxCPM voice cloning (needs a GPU) — pip install voxcpm soundfile

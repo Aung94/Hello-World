@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Clip Maker</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Noto+Sans+Myanmar&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#0d0f14; --card:#161a22; --line:#262c38; --text:#e8ecf3; --muted:#8b95a7; --accent:#ff4d6d; --accent2:#7c5cff; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:Inter,"Noto Sans Myanmar",system-ui,sans-serif; }
+  .wrap { max-width:1000px; margin:0 auto; padding:24px 16px 60px; }
+  h1 { font-size:28px; margin:0 0 4px; font-weight:800; }
+  h1 span { background:linear-gradient(90deg,var(--accent),var(--accent2)); -webkit-background-clip:text; color:transparent; }
+  .sub { color:var(--muted); margin:0 0 20px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; margin-bottom:16px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; }
+  input[type=text], select, input[type=number] { background:#0f1218; color:var(--text); border:1px solid var(--line); border-radius:10px; padding:11px 12px; font:inherit; }
+  #url { flex:1; min-width:220px; font-size:15px; }
+  button { border:0; border-radius:10px; padding:11px 18px; font:inherit; font-weight:600; cursor:pointer; color:#fff; }
+  .primary { background:linear-gradient(90deg,var(--accent),var(--accent2)); }
+  .ghost { background:#232938; }
+  button:disabled { opacity:.5; cursor:wait; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; margin-top:14px; }
+  label { display:flex; flex-direction:column; gap:6px; font-size:13px; color:var(--muted); }
+  label.chk { flex-direction:row; align-items:center; gap:8px; color:var(--text); font-size:14px; }
+  .bar { height:8px; background:#0f1218; border-radius:8px; overflow:hidden; margin:10px 0; }
+  .bar > div { height:100%; width:0; background:linear-gradient(90deg,var(--accent),var(--accent2)); transition:width .4s; }
+  #log { font-family:ui-monospace,monospace; font-size:12px; color:var(--muted); max-height:160px; overflow:auto; white-space:pre-wrap; }
+  .clips { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:14px; }
+  .clip { background:#0f1218; border:1px solid var(--line); border-radius:12px; padding:10px; }
+  .clip video { width:100%; border-radius:8px; background:#000; max-height:420px; }
+  .clip p { font-size:13px; color:var(--muted); margin:6px 0; }
+  .clip a, .src a { color:#9db4ff; font-size:13px; margin-right:10px; }
+  .hidden { display:none; }
+  .err { color:var(--accent); }
+  .hint { color:var(--muted); font-size:13px; margin:10px 0 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎬 <span>AI Clip Maker</span></h1>
+  <p class="sub">Paste a link → download · AI voice-over (မြန်မာ / English / more) · auto clips · dubbing · subtitles</p>
+
+  <div class="card">
+    <div class="row">
+      <input id="url" type="text" placeholder="https://www.youtube.com/watch?v=...  (YouTube, Facebook, TikTok, Vimeo, X, 1000+ sites)">
+      <button class="ghost" id="dlBtn">⬇ Download video</button>
+      <button class="primary" id="goBtn">✨ Make AI clips</button>
+      <button class="primary" id="recapBtn">🎬 Movie recap</button>
+    </div>
+    <p class="hint" id="aiHint"></p>
+    <div class="grid">
+      <label>🎙 Dub (AI voice) language
+        <select id="lang"></select></label>
+      <label>💬 Subtitle language
+        <select id="sub"></select></label>
+      <label>Voice engine
+        <select id="engine"><option value="edge">Edge TTS (fast, no GPU)</option><option value="voxcpm">VoxCPM clone (GPU)</option></select></label>
+      <label>Voice <select id="voice"></select></label>
+      <label>Speech speed
+        <select id="rate"><option>+0%</option><option>+10%</option><option>+20%</option><option>-10%</option></select></label>
+      <label>Number of clips (0 = dub full video)
+        <input id="n" type="number" min="0" max="30" value="5"></label>
+      <label>Clip length (seconds)
+        <input id="len" type="number" min="10" max="600" value="60"></label>
+      <label>Recap length (minutes)
+        <input id="rmin" type="number" min="1" max="60" value="5"></label>
+      <label>Recap notes for AI (names, genre)
+        <input id="ctx" type="text" placeholder="e.g. Korean thriller, hero is Min-jun"></label>
+      <label>Original audio volume
+        <select id="ovol"><option value="0.12">Low (12%)</option><option value="0">Muted</option><option value="0.3">Medium (30%)</option></select></label>
+    </div>
+    <div class="row" style="margin-top:12px;gap:16px;align-items:center">
+      <span style="color:var(--muted);font-size:13px">Aspect ratios:</span>
+      <label class="chk"><input type="checkbox" name="asp" value="9:16" checked> 9:16 TikTok/Reels/Shorts</label>
+      <label class="chk"><input type="checkbox" name="asp" value="4:5"> 4:5 Facebook/Instagram feed</label>
+      <label class="chk"><input type="checkbox" name="asp" value="1:1"> 1:1 Square</label>
+      <label class="chk"><input type="checkbox" name="asp" value="16:9"> 16:9 YouTube</label>
+      <label class="chk"><input type="checkbox" name="asp" value="original"> Original</label>
+    </div>
+  </div>
+
+  <div class="card hidden" id="status">
+    <div><b id="step">…</b> <span id="pct" style="color:var(--muted)"></span></div>
+    <div class="bar"><div id="fill"></div></div>
+    <div id="log"></div>
+    <div class="src" id="src" style="margin-top:10px"></div>
+  </div>
+
+  <div class="clips" id="clips"></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let opts = null, timer = null;
+
+async function loadOptions() {
+  opts = await (await fetch('/api/options')).json();
+  $('sub').add(new Option('Same as dub', 'same'));
+  for (const [k, v] of Object.entries(opts.languages)) {
+    $('lang').add(new Option(v.name, k));
+    $('sub').add(new Option(v.name, k));
+  }
+  $('lang').add(new Option('No dub (keep original audio)', 'none'));
+  $('sub').add(new Option('Original language', 'original'));
+  $('sub').add(new Option('No subtitles', 'none'));
+  $('lang').value = 'my';
+  fillVoices();
+  $('aiHint').textContent = opts.ai
+    ? '✅ Claude AI is on: it picks the best moments and writes the recap script.'
+    : 'ℹ️ Set ANTHROPIC_API_KEY on the server to turn on Movie recap and AI highlight picking. Clips still work without it.';
+  $('recapBtn').disabled = !opts.ai;
+}
+function fillVoices() {
+  const sel = $('voice'); sel.innerHTML = '';
+  const off = $('lang').value === 'none';
+  sel.disabled = $('engine').disabled = $('rate').disabled = off;
+  if (off) {
+    sel.add(new Option('—', ''));
+  } else if ($('engine').value === 'voxcpm') {
+    sel.add(new Option('Clone original speaker', 'clone-original'));
+    opts.voxcpm_presets.forEach(p => sel.add(new Option(p, p)));
+  } else {
+    opts.languages[$('lang').value].voices.forEach(v => sel.add(new Option(v.replace('Neural',''), v)));
+  }
+}
+$('lang').onchange = fillVoices;
+$('engine').onchange = fillVoices;
+
+async function submit(mode) {
+  const url = $('url').value.trim();
+  if (!url) return alert('Paste a video link first');
+  const dub = $('lang').value, sub = $('sub').value;
+  const dubOn = dub !== 'none';
+  // with no dub, the recap script / translation language follows the subtitle choice
+  const lang = dubOn ? dub : (opts.languages[sub] ? sub : 'my');
+  const body = {
+    url, mode, target_lang: lang, engine: $('engine').value, voice: $('voice').value || null,
+    rate: $('rate').value, num_clips: +$('n').value, clip_length: +$('len').value,
+    voiceover: dubOn, subtitles: sub !== 'none', sub_lang: (!dubOn && sub === 'same') ? 'original' : sub,
+    aspects: [...document.querySelectorAll('input[name=asp]:checked')].map(e => e.value),
+    original_volume: +$('ovol').value, recap_minutes: +$('rmin').value, context: $('ctx').value,
+  };
+  setBusy(true);
+  $('clips').innerHTML = ''; $('src').innerHTML = '';
+  $('status').classList.remove('hidden');
+  const r = await fetch('/api/jobs', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+  if (!r.ok) { setBusy(false); return alert(await r.text()); }
+  const job = await r.json();
+  clearInterval(timer);
+  timer = setInterval(() => poll(job.id), 1500);
+}
+function setBusy(b) { $('goBtn').disabled = b; $('dlBtn').disabled = b; $('recapBtn').disabled = b || !opts.ai; }
+
+async function poll(id) {
+  const job = await (await fetch('/api/jobs/' + id)).json();
+  $('step').textContent = job.status === 'error' ? 'Error' : job.step;
+  $('step').className = job.status === 'error' ? 'err' : '';
+  $('pct').textContent = job.progress + '%';
+  $('fill').style.width = job.progress + '%';
+  $('log').textContent = job.log.join('\n') + (job.error ? '\n' + job.error : '');
+  $('log').scrollTop = 1e9;
+  if (job.source) $('src').innerHTML = `🎞 ${job.source.title || ''} — <a href="${job.source.file}" download>Download original video</a>`;
+  if (job.status === 'done' || job.status === 'error') {
+    clearInterval(timer); setBusy(false);
+    $('clips').innerHTML = job.outputs.map(c => `
+      <div class="clip">
+        <video src="${c.video}" controls preload="metadata"></video>
+        <p><b>${escapeHtml(c.title || 'Clip ' + c.index)}</b> · ${fmt(c.start)}–${fmt(c.end)}</p>
+        <p>${escapeHtml(c.preview)}</p>
+        ${(c.videos || [{aspect: 'MP4', url: c.video}]).map(v => `<a href="${v.url}" download>⬇ ${v.aspect}</a>`).join('')}
+        ${c.subtitles ? `<a href="${c.subtitles}" download>SRT</a>` : ''}
+        <a href="${c.script}" target="_blank">Script</a>
+      </div>`).join('');
+  }
+}
+const fmt = s => new Date(s * 1000).toISOString().substr(s >= 3600 ? 11 : 14, s >= 3600 ? 8 : 5);
+const escapeHtml = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+$('goBtn').onclick = () => submit('clips');
+$('dlBtn').onclick = () => submit('download');
+$('recapBtn').onclick = () => submit('recap');
+loadOptions();
+</script>
+</body>
+</html>
